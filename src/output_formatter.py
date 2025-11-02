@@ -262,6 +262,145 @@ class OutputFormatter:
 
         return output_path
 
+    def append_function_to_csv(self, result: AnalysisResult) -> Path:
+        """Append a single function result to CSV (incremental mode).
+
+        Args:
+            result: Single analysis result
+
+        Returns:
+            Path to CSV file
+        """
+        output_path = self.output_dir / "metrics" / "functions.csv"
+
+        # Check if file exists, if not create with header
+        file_exists = output_path.exists()
+
+        with output_path.open("a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+
+            # Write header if file doesn't exist
+            if not file_exists:
+                writer.writerow(
+                    [
+                        "ファイル",
+                        "関数名",
+                        "時間複雑度",
+                        "依存関数数",
+                        "潜在的問題数",
+                        "改善提案数",
+                        "トークン数",
+                    ]
+                )
+
+            # Write data row
+            file_name = result.chunk_id.split(":")[0] if ":" in result.chunk_id else "unknown"
+            writer.writerow(
+                [
+                    file_name,
+                    result.chunk_name,
+                    result.complexity,
+                    len(result.dependencies),
+                    len(result.potential_issues),
+                    len(result.improvements),
+                    result.tokens_used,
+                ]
+            )
+
+        return output_path
+
+    def append_function_to_file_doc(
+        self, file_path: str, result: AnalysisResult, language: str = "c"
+    ) -> Path:
+        """Append a single function to file documentation (incremental mode).
+
+        Args:
+            file_path: Path to the source file
+            result: Single analysis result
+            language: Programming language
+
+        Returns:
+            Path to generated markdown file
+        """
+        file_name = Path(file_path).name
+        output_path = self.output_dir / "files" / f"{file_name}.md"
+
+        # Check if file exists
+        file_exists = output_path.exists()
+
+        if not file_exists:
+            # Create file with header
+            header = f"""# {file_name}
+
+**パス**: `{file_path}`
+**言語**: {language}
+
+---
+
+## 関数一覧
+
+"""
+            output_path.write_text(header, encoding="utf-8")
+
+        # Append function documentation
+        function_doc = f"""### `{result.chunk_name}`
+
+#### 目的
+{result.purpose}
+
+#### アルゴリズム
+{result.algorithm}
+
+#### 時間計算量
+{result.complexity}
+
+"""
+
+        if result.dependencies:
+            function_doc += "#### 依存関数\n"
+            for dep in result.dependencies:
+                function_doc += f"- `{dep}`\n"
+            function_doc += "\n"
+
+        if result.potential_issues:
+            function_doc += "#### ⚠️ 潜在的問題\n"
+            for issue in result.potential_issues:
+                function_doc += f"- {issue}\n"
+            function_doc += "\n"
+
+        if result.improvements:
+            function_doc += "#### 💡 改善提案\n"
+            for improvement in result.improvements:
+                function_doc += f"- {improvement}\n"
+            function_doc += "\n"
+
+        function_doc += "---\n\n"
+
+        # Append to file
+        with output_path.open("a", encoding="utf-8") as f:
+            f.write(function_doc)
+
+        return output_path
+
+    def finalize_file_doc(self, file_path: str) -> Path:
+        """Finalize file documentation by adding footer.
+
+        Args:
+            file_path: Path to the source file
+
+        Returns:
+            Path to markdown file
+        """
+        file_name = Path(file_path).name
+        output_path = self.output_dir / "files" / f"{file_name}.md"
+
+        if output_path.exists():
+            footer = "\n---\n\n*この文書は CodeChart により自動生成されました。*\n"
+            with output_path.open("a", encoding="utf-8") as f:
+                f.write(footer)
+
+        return output_path
+
     def _calculate_stats(
         self, results: Sequence[AnalysisResult], file_results: dict[str, list[AnalysisResult]]
     ) -> ProjectStats:

@@ -98,13 +98,16 @@ class Orchestrator:
             print("No C/C++ files found!")
             return self.stats
 
+        # Create formatter for incremental output
+        formatter = OutputFormatter(output_dir)
+
         # Process all files
         all_results: list[AnalysisResult] = []
         file_results: dict[str, list[AnalysisResult]] = defaultdict(list)
 
         for i, file_path in enumerate(file_paths, 1):
             print(f"\n[{i}/{self.stats.total_files}] Processing {file_path.name}...")
-            results = self._process_file(file_path)
+            results = self._process_file(file_path, source_dir, formatter)
 
             if results:
                 all_results.extend(results)
@@ -113,12 +116,11 @@ class Orchestrator:
             else:
                 self.stats.failed_files += 1
 
-        # Generate output
+        # Generate final summary documents
         if all_results:
-            print("\nGenerating documentation...")
-            formatter = OutputFormatter(output_dir)
+            print("\nGenerating final summary...")
 
-            # Generate project summary
+            # Generate project summary (README.md)
             summary_path = formatter.generate_project_summary(
                 project_name=project_name,
                 results=all_results,
@@ -126,21 +128,14 @@ class Orchestrator:
             )
             print(f"Generated: {summary_path}")
 
-            # Generate file documentation
-            for file_path, results in file_results.items():
-                doc_path = formatter.generate_file_doc(
-                    file_path=file_path,
-                    results=results,
-                    language="c",  # TODO: Detect language properly
-                )
-                print(f"Generated: {doc_path}")
-
-            # Generate CSV files
-            functions_csv = formatter.generate_function_csv(all_results)
-            print(f"Generated: {functions_csv}")
-
+            # Generate metrics summary CSV
             metrics_csv = formatter.generate_metrics_csv(all_results, dict(file_results))
             print(f"Generated: {metrics_csv}")
+
+            # Note: File documentation and functions.csv already generated incrementally
+            print(
+                f"✓ Incremental output completed: {len(file_results)} files, {len(all_results)} functions"
+            )
 
         # Calculate final stats
         self.stats.total_time = time.time() - start_time
@@ -150,11 +145,15 @@ class Orchestrator:
 
         return self.stats
 
-    def _process_file(self, file_path: Path) -> list[AnalysisResult]:
-        """Process a single source file.
+    def _process_file(
+        self, file_path: Path, source_dir: Path, formatter: OutputFormatter
+    ) -> list[AnalysisResult]:
+        """Process a single source file with incremental output.
 
         Args:
             file_path: Path to source file
+            source_dir: Source directory root
+            formatter: Output formatter for incremental writes
 
         Returns:
             List of analysis results
@@ -184,12 +183,20 @@ class Orchestrator:
                 print("  No chunks generated, skipping...")
                 return results
 
-            # Analyze each chunk
+            # Get relative file path for output
+            relative_path = str(file_path.relative_to(source_dir))
+
+            # Analyze each chunk with incremental output
             for j, chunk in enumerate(chunks, 1):
                 try:
                     print(f"    Analyzing chunk {j}/{len(chunks)}: {chunk.name}...", end=" ")
                     result = self.analyzer.analyze_chunk(chunk)
                     results.append(result)
+
+                    # Incremental output: write immediately
+                    formatter.append_function_to_csv(result)
+                    formatter.append_function_to_file_doc(relative_path, result, code_file.language)
+
                     self.stats.successful_chunks += 1
                     self.stats.total_tokens += result.tokens_used
                     print("✓")
@@ -197,6 +204,10 @@ class Orchestrator:
                     print(f"✗ ({e})")
                     self.stats.failed_chunks += 1
                     self.stats.errors.append(f"{file_path.name}:{chunk.name} - {e}")
+
+            # Finalize file documentation
+            if results:
+                formatter.finalize_file_doc(relative_path)
 
         except ParseError as e:
             error_msg = f"{file_path.name}: Parse error - {e}"
