@@ -154,7 +154,7 @@ class PycparserAdapter:
         """
         try:
             if hasattr(decl.type, "type"):
-                return self.generator.visit(decl.type.type)
+                return str(self.generator.visit(decl.type.type))
         except Exception:
             pass
         return ""

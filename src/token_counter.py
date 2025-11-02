@@ -82,7 +82,7 @@ class TiktokenCounter:
             "hits": info.hits,
             "misses": info.misses,
             "size": info.currsize,
-            "max_size": info.maxsize,
+            "max_size": info.maxsize if info.maxsize is not None else 0,
         }
 
     def clear_cache(self) -> None:
