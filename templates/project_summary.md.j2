@@ -1,0 +1,40 @@
+# {{ project_name }} 技術文書
+
+生成日時: {{ generated_at }}
+
+## プロジェクト概要
+
+- **総ファイル数**: {{ stats.total_files }}
+- **総関数数**: {{ stats.total_functions }}
+- **総行数**: {{ stats.total_lines }}
+- **平均複雑度**: {{ stats.avg_complexity }}
+- **解析トークン数**: {{ stats.total_tokens }}
+
+## ファイル一覧
+
+| ファイル名 | 関数数 | 行数 | パス |
+|-----------|--------|------|------|
+{% for file in files %}
+| [{{ file.name }}](files/{{ file.name }}.md) | {{ file.function_count }} | {{ file.line_count }} | `{{ file.path }}` |
+{% endfor %}
+
+## 潜在的問題サマリー
+
+{% if critical_issues %}
+### 重要度: 高
+{% for issue in critical_issues %}
+- **{{ issue.function_name }}** ({{ issue.file_name }}): {{ issue.description }}
+{% endfor %}
+{% else %}
+重大な問題は検出されませんでした。
+{% endif %}
+
+## メトリクス詳細
+
+詳細なメトリクスは以下のCSVファイルを参照してください：
+- [関数一覧](metrics/functions.csv)
+- [メトリクスサマリー](metrics/metrics.csv)
+
+---
+
+*この文書は CodeChart により自動生成されました。*
