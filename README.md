@@ -24,10 +24,11 @@ GPT-4 APIによる意味解析と、社内RAGシステムへの最適化され�
 
 ## 技術スタック
 - **言語**: Python 3.12+
+- **パッケージ管理**: uv
 - **AST解析**: pycparser（Phase 1）→ libclang（Phase 2+）
 - **LLM**: GPT-4 Turbo API（18,000トークン/チャンク）
 - **文書生成**: Jinja2（Markdown）、CSV
-- **品質管理**: pytest、ruff、mypy
+- **品質管理**: pytest、ruff、Makefile
 
 ---
 
@@ -44,31 +45,26 @@ git clone https://github.com/nyasuto/codechart.git
 cd codechart
 ```
 
-### 2. 依存関係のインストール
-
-#### オプションA: Poetry（推奨）
+### 2. 開発環境のセットアップ
 ```bash
-# Poetryのインストール（未インストールの場合）
-curl -sSL https://install.python-poetry.org | python3 -
-
-# 依存関係のインストール
-poetry install
-
-# 仮想環境の有効化
-poetry shell
+# uvと依存関係を自動インストール
+make dev-setup
 ```
 
-#### オプションB: pip
+このコマンドは以下を実行します：
+- uvのインストール（未インストールの場合）
+- プロジェクトの依存関係インストール（`uv sync --all-extras`）
+
+#### 手動でuvをインストールする場合
 ```bash
-# 仮想環境の作成
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 依存関係のインストール
-pip install -r requirements.txt
+# Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
 
-# 開発用依存関係（テスト・リント用）
-pip install -r requirements-dev.txt
+# インストール後
+uv sync --all-extras
 ```
 
 ### 3. 環境変数の設定
@@ -96,13 +92,13 @@ cp config/default.yaml config/custom.yaml
 ### 基本的な解析実行
 ```bash
 # cJSONプロジェクトを解析
-python -m src.cli analyze data/cJSON -o output/cjson
+uv run codechart analyze data/cJSON -o output/cjson
 
 # カスタム設定を使用
-python -m src.cli analyze data/cJSON -c config/custom.yaml
+uv run codechart analyze data/cJSON -c config/custom.yaml
 
 # ドライラン（APIコールなし、トークン計算のみ）
-python -m src.cli analyze data/cJSON --dry-run
+uv run codechart analyze data/cJSON --dry-run
 ```
 
 ### 出力ファイル
@@ -121,37 +117,49 @@ output/cjson/
 
 ## 開発
 
+### 利用可能なコマンド
+```bash
+make help          # コマンド一覧を表示
+make install       # 依存関係をインストール
+make test          # テストを実行
+make lint          # ruff checkを実行
+make format        # コードをフォーマット
+make format-check  # フォーマットチェック（CI用）
+make quality       # すべての品質チェックを実行
+make clean         # キャッシュを削除
+```
+
 ### テストの実行
 ```bash
 # 全テスト実行
-pytest
+make test
+
+# または直接pytest実行
+uv run pytest
 
 # カバレッジ付き
-pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-report=html
 
 # 特定のテストのみ
-pytest tests/test_chunker.py
+uv run pytest tests/test_chunker.py
 ```
 
 ### コード品質チェック
 ```bash
 # リント
-ruff check src tests
+make lint
 
 # フォーマット
-ruff format src tests
+make format
 
-# 型チェック
-mypy src
+# フォーマットチェック
+make format-check
 ```
 
 ### すべての品質チェックを実行
 ```bash
 # GitHub Actionsと同じチェックをローカルで実行
-pytest --cov=src --cov-report=term-missing
-ruff check src tests
-ruff format --check src tests
-mypy src
+make quality
 ```
 
 ---
@@ -182,9 +190,9 @@ codechart/
 ├── data/                       # 入力ソースコード
 ├── output/                     # 解析結果（.gitignore）
 ├── .cache/                     # キャッシュ（.gitignore）
+├── Makefile                    # ビルドコマンド
 ├── pyproject.toml              # プロジェクト設定
-├── requirements.txt            # 本番依存関係
-├── requirements-dev.txt        # 開発依存関係
+├── uv.lock                     # 依存関係ロックファイル
 └── README.md                   # このファイル
 ```
 
@@ -199,7 +207,7 @@ codechart/
 1. Issueを確認・作成
 2. 機能ブランチを作成（`feat/issue-X-feature-name`）
 3. コード実装とテスト追加
-4. 品質チェック実施（pytest、ruff、mypy）
+4. 品質チェック実施（`make quality`）
 5. Pull Request作成
 
 詳細は [development_plan.md](development_plan.md) を参照。
