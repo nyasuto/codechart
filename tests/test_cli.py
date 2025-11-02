@@ -24,6 +24,7 @@ def test_analyze_help() -> None:
     assert "SOURCE_DIR" in result.output
     assert "--output" in result.output
     assert "--config" in result.output
+    assert "--parallel" in result.output
 
 
 def test_analyze_nonexistent_directory() -> None:
@@ -69,3 +70,23 @@ def test_main_version() -> None:
 
     assert result.exit_code == 0
     assert "0.1.0" in result.output
+
+
+def test_analyze_parallel_option_validation() -> None:
+    """Test --parallel option validation."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        import os
+
+        os.mkdir("test_src")
+
+        # Test with invalid value (< 1)
+        result = runner.invoke(analyze, ["test_src", "--parallel", "0"])
+        assert result.exit_code == 1
+        assert "must be at least 1" in result.output
+
+        # Test with negative value
+        result = runner.invoke(analyze, ["test_src", "-p", "-1"])
+        assert result.exit_code == 1
+        assert "must be at least 1" in result.output

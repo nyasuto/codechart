@@ -55,6 +55,13 @@ def main() -> None:
     is_flag=True,
     help="Enable debug output",
 )
+@click.option(
+    "--parallel",
+    "-p",
+    type=int,
+    default=1,
+    help="Number of parallel workers for chunk analysis (default: 1 for serial)",
+)
 def analyze(
     source_dir: Path,
     output_dir: Path,
@@ -62,6 +69,7 @@ def analyze(
     project_name: str | None,
     dry_run: bool,
     debug: bool,
+    parallel: int,
 ) -> None:
     """Analyze C/C++ source code and generate technical documentation.
 
@@ -83,13 +91,20 @@ def analyze(
         if debug:
             click.echo("Debug mode enabled")
 
+        # Validate parallel workers
+        if parallel < 1:
+            click.echo("Error: --parallel must be at least 1", err=True)
+            sys.exit(1)
+
         # Create orchestrator
-        orchestrator = Orchestrator(config=config)
+        orchestrator = Orchestrator(config=config, max_workers=parallel)
 
         # Run analysis
         click.echo("\nCodeChart v0.1.0")
         click.echo(f"Source: {source_dir}")
         click.echo(f"Output: {output_dir}")
+        if parallel > 1:
+            click.echo(f"Parallel workers: {parallel}")
         click.echo()
 
         stats = orchestrator.analyze_directory(
