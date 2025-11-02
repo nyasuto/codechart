@@ -1,0 +1,126 @@
+# CodeChart Configuration File
+# C/C++ Legacy Code Analysis Pipeline
+
+# OpenAI API Settings
+api:
+  provider: openai
+  model: gpt-4-turbo-preview  # または gpt-4-1106-preview
+  api_key_env: OPENAI_API_KEY  # 環境変数名
+  base_url: null  # カスタムAPIエンドポイント（自社API用）
+  max_tokens: 18000  # チャンク最大トークン数（余裕を持たせる）
+  temperature: 0.2  # 低めで一貫性を確保
+  timeout: 60  # タイムアウト（秒）
+  max_retries: 5  # 最大リトライ回数
+
+# Parser Settings
+parser:
+  phase: 1  # 1: pycparser, 2+: libclang
+  default_parser: pycparser  # pycparser or libclang
+  preprocess: true  # gcc -E でプリプロセス実行
+  preprocess_flags:
+    - "-E"
+    - "-P"
+    - "-nostdinc"  # 標準ヘッダを無視
+  include_headers: true  # ヘッダファイルも解析対象
+  file_extensions:
+    c: [".c"]
+    cpp: [".cpp", ".cc", ".cxx"]
+    header: [".h", ".hpp", ".hxx"]
+
+# Chunking Settings
+chunking:
+  strategy: function  # function, block, hybrid
+  max_chunk_tokens: 18000  # トークン上限
+  overlap_ratio: 0.0  # Phase 1では重複なし
+  min_chunk_tokens: 100  # 最小トークン数（小さすぎるチャンクを除外）
+  include_context: true  # 型定義・マクロをコンテキストに追加
+  context_max_tokens: 2000  # コンテキストの最大トークン数
+
+# Token Counter Settings
+token_counter:
+  cache_size: 2048  # LRUキャッシュサイズ
+  encoding: cl100k_base  # tiktokenエンコーディング
+  estimate_mode: false  # true: 高速概算, false: 正確計算
+
+# Cache Settings
+cache:
+  enabled: true
+  directory: .cache/analysis
+  ttl_days: 30  # キャッシュ有効期限
+  hash_algorithm: sha256  # ファイルハッシュアルゴリズム
+
+# Output Settings
+output:
+  directory: output
+  formats:
+    - markdown
+    - csv
+  markdown:
+    project_summary: true  # プロジェクトサマリー生成
+    file_detail: true  # ファイル詳細生成
+    include_source: false  # ソースコード埋め込み
+    template_dir: templates
+  csv:
+    function_list: true  # 関数一覧CSV
+    metrics: true  # メトリクスCSV
+    dependencies: false  # 依存関係CSV（Phase 2）
+    encoding: utf-8-sig  # BOM付きUTF-8（Excel対応）
+
+# Performance Settings
+performance:
+  max_workers: 5  # 並列処理ワーカー数
+  batch_size: 10  # バッチサイズ
+  rate_limit:
+    requests_per_minute: 500  # RPM制限
+    tokens_per_minute: 10000  # TPM制限
+  memory_limit_mb: 4096  # メモリ上限（MB）
+
+# Logging Settings
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: json  # json or text
+  output: stdout  # stdout, file, both
+  file_path: codechart.log
+  rotation:
+    enabled: true
+    max_size_mb: 10
+    backup_count: 5
+
+# Prompt Templates
+prompts:
+  system_prompt: |
+    あなたはC/C++コード解析の専門家です。
+    提供されたコードを詳細に分析し、以下の観点から評価してください：
+    1. 機能と目的
+    2. アルゴリズムの複雑度
+    3. 潜在的なバグやメモリリーク
+    4. 改善提案
+
+  function_analysis: |
+    以下のC/C++関数を解析してください。
+
+    ## コード
+    ```c
+    {code}
+    ```
+
+    ## コンテキスト
+    {context}
+
+    ## 出力形式（JSON）
+    {{
+      "summary": "関数の簡潔な説明（1-2文）",
+      "purpose": "この関数の目的",
+      "algorithm": "使用されているアルゴリズム",
+      "complexity": "時間計算量（O記法）",
+      "dependencies": ["呼び出している関数のリスト"],
+      "potential_issues": ["潜在的な問題点のリスト"],
+      "improvements": ["改善提案のリスト"]
+    }}
+
+# Feature Flags
+features:
+  static_analysis: false  # Phase 2で有効化
+  rag_system: false  # 社内システム利用のため無効
+  incremental_analysis: false  # Phase 2で有効化
+  parallel_processing: false  # Phase 2で有効化
