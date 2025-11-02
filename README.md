@@ -2,7 +2,7 @@
 C/C++レガシーコード解析パイプライン
 
 [![CI](https://github.com/nyasuto/codechart/actions/workflows/ci.yml/badge.svg)](https://github.com/nyasuto/codechart/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## 概要
@@ -23,7 +23,7 @@ GPT-4 APIによる意味解析と、社内RAGシステムへの最適化され�
 4. **Phase 4**: 5万行規模（Redis相当）での本番運用
 
 ## 技術スタック
-- **言語**: Python 3.10+
+- **言語**: Python 3.12+
 - **AST解析**: pycparser（Phase 1）→ libclang（Phase 2+）
 - **LLM**: GPT-4 Turbo API（18,000トークン/チャンク）
 - **文書生成**: Jinja2（Markdown）、CSV
@@ -34,7 +34,7 @@ GPT-4 APIによる意味解析と、社内RAGシステムへの最適化され�
 ## セットアップ
 
 ### 必須要件
-- Python 3.10 以上
+- Python 3.12 以上
 - OpenAI API キー（GPT-4アクセス権限）
 - Git
 
