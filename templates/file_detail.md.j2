@@ -1,0 +1,57 @@
+# {{ file_name }}
+
+**パス**: `{{ file_path }}`
+**言語**: {{ language }}
+**行数**: {{ line_count }}
+**関数数**: {{ function_count }}
+
+## 概要
+
+{{ file_summary }}
+
+---
+
+## 関数一覧
+
+{% for func in functions %}
+### `{{ func.signature }}`
+
+**行**: {{ func.start_line }}-{{ func.end_line }}
+
+#### 目的
+{{ func.purpose }}
+
+#### アルゴリズム
+{{ func.algorithm }}
+
+#### 時間計算量
+{{ func.complexity }}
+
+{% if func.dependencies %}
+#### 依存関数
+{% for dep in func.dependencies %}
+- `{{ dep }}`
+{% endfor %}
+{% endif %}
+
+{% if func.potential_issues %}
+#### ⚠️ 潜在的問題
+{% for issue in func.potential_issues %}
+- {{ issue }}
+{% endfor %}
+{% endif %}
+
+{% if func.improvements %}
+#### 💡 改善提案
+{% for improvement in func.improvements %}
+- {{ improvement }}
+{% endfor %}
+{% endif %}
+
+---
+
+{% endfor %}
+
+---
+
+*この文書は CodeChart により自動生成されました。*
