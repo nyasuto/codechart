@@ -64,13 +64,7 @@ class CodeLoader:
             return [root_path] if self._is_valid_file(root_path) else []
 
         # Recursively find all valid files
-        return sorted(
-            [
-                f
-                for f in root_path.rglob("*")
-                if f.is_file() and self._is_valid_file(f)
-            ]
-        )
+        return sorted([f for f in root_path.rglob("*") if f.is_file() and self._is_valid_file(f)])
 
     def load_file(self, file_path: Path) -> CodeFile:
         """Load a single source file.
