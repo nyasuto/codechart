@@ -2,8 +2,10 @@
 
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
+from threading import Lock
 
 from src.ast_parser import ParseError, create_parser
 from src.code_chunker import CodeChunker
@@ -44,13 +46,15 @@ class AnalysisStats:
 class Orchestrator:
     """Orchestrates the entire code analysis pipeline."""
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(self, config: Config | None = None, max_workers: int = 1) -> None:
         """Initialize orchestrator.
 
         Args:
             config: Configuration object (loads default if None)
+            max_workers: Maximum number of parallel workers (default: 1 for serial execution)
         """
         self.config = config or Config.from_yaml()
+        self.max_workers = max_workers
 
         # Initialize components
         self.loader = CodeLoader(include_headers=True)
@@ -63,6 +67,10 @@ class Orchestrator:
 
         # Statistics
         self.stats = AnalysisStats()
+
+        # Thread safety
+        self.stats_lock = Lock()
+        self.print_lock = Lock()
 
     def analyze_directory(
         self,
@@ -186,24 +194,15 @@ class Orchestrator:
             # Get relative file path for output
             relative_path = str(file_path.relative_to(source_dir))
 
-            # Analyze each chunk with incremental output
-            for j, chunk in enumerate(chunks, 1):
-                try:
-                    print(f"    Analyzing chunk {j}/{len(chunks)}: {chunk.name}...", end=" ")
-                    result = self.analyzer.analyze_chunk(chunk)
-                    results.append(result)
-
-                    # Incremental output: write immediately
-                    formatter.append_function_to_csv(result)
-                    formatter.append_function_to_file_doc(relative_path, result, code_file.language)
-
-                    self.stats.successful_chunks += 1
-                    self.stats.total_tokens += result.tokens_used
-                    print("✓")
-                except Exception as e:
-                    print(f"✗ ({e})")
-                    self.stats.failed_chunks += 1
-                    self.stats.errors.append(f"{file_path.name}:{chunk.name} - {e}")
+            # Analyze chunks (parallel or serial based on max_workers)
+            if self.max_workers > 1:
+                results = self._analyze_chunks_parallel(
+                    chunks, file_path, relative_path, code_file.language, formatter
+                )
+            else:
+                results = self._analyze_chunks_serial(
+                    chunks, file_path, relative_path, code_file.language, formatter
+                )
 
             # Finalize file documentation
             if results:
@@ -219,6 +218,116 @@ class Orchestrator:
             self.stats.errors.append(error_msg)
 
         return results
+
+    def _analyze_chunks_serial(
+        self,
+        chunks: list,
+        file_path: Path,
+        relative_path: str,
+        language: str,
+        formatter: OutputFormatter,
+    ) -> list[AnalysisResult]:
+        """Analyze chunks serially (original implementation).
+
+        Args:
+            chunks: List of code chunks to analyze
+            file_path: Path to source file
+            relative_path: Relative path for output
+            language: Programming language
+            formatter: Output formatter for incremental writes
+
+        Returns:
+            List of analysis results
+        """
+        results: list[AnalysisResult] = []
+
+        for j, chunk in enumerate(chunks, 1):
+            try:
+                print(f"    Analyzing chunk {j}/{len(chunks)}: {chunk.name}...", end=" ")
+                result = self.analyzer.analyze_chunk(chunk)
+                results.append(result)
+
+                # Incremental output: write immediately
+                formatter.append_function_to_csv(result)
+                formatter.append_function_to_file_doc(relative_path, result, language)
+
+                self.stats.successful_chunks += 1
+                self.stats.total_tokens += result.tokens_used
+                print("✓")
+            except Exception as e:
+                print(f"✗ ({e})")
+                self.stats.failed_chunks += 1
+                self.stats.errors.append(f"{file_path.name}:{chunk.name} - {e}")
+
+        return results
+
+    def _analyze_chunks_parallel(
+        self,
+        chunks: list,
+        file_path: Path,
+        relative_path: str,
+        language: str,
+        formatter: OutputFormatter,
+    ) -> list[AnalysisResult]:
+        """Analyze chunks in parallel using ThreadPoolExecutor.
+
+        Args:
+            chunks: List of code chunks to analyze
+            file_path: Path to source file
+            relative_path: Relative path for output
+            language: Programming language
+            formatter: Output formatter for incremental writes
+
+        Returns:
+            List of analysis results
+        """
+        results: list[AnalysisResult | None] = [None] * len(chunks)
+
+        def analyze_chunk_wrapper(index: int, chunk):
+            """Wrapper to analyze a single chunk with index tracking."""
+            try:
+                result = self.analyzer.analyze_chunk(chunk)
+
+                # Thread-safe file writing
+                formatter.append_function_to_csv(result)
+                formatter.append_function_to_file_doc(relative_path, result, language)
+
+                # Thread-safe stats update
+                with self.stats_lock:
+                    self.stats.successful_chunks += 1
+                    self.stats.total_tokens += result.tokens_used
+
+                # Thread-safe printing
+                with self.print_lock:
+                    print(f"    ✓ Chunk {index + 1}/{len(chunks)}: {chunk.name}")
+
+                return (index, result, None)
+            except Exception as e:
+                # Thread-safe stats update
+                with self.stats_lock:
+                    self.stats.failed_chunks += 1
+                    self.stats.errors.append(f"{file_path.name}:{chunk.name} - {e}")
+
+                # Thread-safe printing
+                with self.print_lock:
+                    print(f"    ✗ Chunk {index + 1}/{len(chunks)}: {chunk.name} ({e})")
+
+                return (index, None, e)
+
+        # Execute chunks in parallel
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(analyze_chunk_wrapper, i, chunk): i
+                for i, chunk in enumerate(chunks)
+            }
+
+            for future in as_completed(futures):
+                index, result, error = future.result()
+                if result is not None:
+                    results[index] = result
+
+        # Filter out None values (failed chunks)
+        return [r for r in results if r is not None]
 
     def _print_summary(self) -> None:
         """Print analysis summary."""

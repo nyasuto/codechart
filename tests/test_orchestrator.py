@@ -63,6 +63,23 @@ def test_orchestrator_initialization_default_config() -> None:
     assert orchestrator.loader is not None
 
 
+def test_orchestrator_initialization_with_max_workers() -> None:
+    """Test Orchestrator initialization with max_workers parameter."""
+    config = Config.from_yaml()
+
+    # Test default (serial execution)
+    orchestrator_serial = Orchestrator(config=config)
+    assert orchestrator_serial.max_workers == 1
+
+    # Test with parallel workers
+    orchestrator_parallel = Orchestrator(config=config, max_workers=4)
+    assert orchestrator_parallel.max_workers == 4
+
+    # Test thread safety locks are initialized
+    assert orchestrator_parallel.stats_lock is not None
+    assert orchestrator_parallel.print_lock is not None
+
+
 def test_analyze_directory_nonexistent(tmp_path: Path) -> None:
     """Test analyzing non-existent directory."""
     orchestrator = Orchestrator()
