@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from src.code_loader import CodeFile, CodeLoader
 
 

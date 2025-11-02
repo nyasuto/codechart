@@ -69,7 +69,7 @@ def test_pycparser_void_function() -> None:
 
     code = """
     void hello() {
-        // Do nothing
+        /* Do nothing */
     }
     """
 
