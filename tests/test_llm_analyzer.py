@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from src.code_chunker import CodeChunk
 from src.config import Config
-from src.llm_analyzer import AnalysisResult, LLMAnalyzer
+from src.llm_analyzer import AnalysisResult, Behavior, CallGraph, DataFlow, LLMAnalyzer
 
 
 def test_analysis_result_creation() -> None:
@@ -12,20 +12,31 @@ def test_analysis_result_creation() -> None:
     result = AnalysisResult(
         chunk_id="test123",
         chunk_name="test_func",
-        summary="Test function",
-        purpose="Testing",
-        algorithm="Simple loop",
-        complexity="O(n)",
-        dependencies=["helper_func"],
-        potential_issues=["None"],
-        improvements=["Add error handling"],
-        raw_response='{"summary": "test"}',
+        function_role="Test function for demonstration",
+        behavior=Behavior(
+            normal_case="Returns sum of two integers",
+            special_cases=[],
+            error_cases=[],
+        ),
+        data_flow=DataFlow(
+            inputs="Two integer parameters a and b",
+            outputs="Integer sum",
+            side_effects="None",
+        ),
+        call_graph=CallGraph(
+            calls=["helper_func"],
+            called_by=[],
+        ),
+        state_management="No state",
+        assumptions="Input integers are valid",
+        notes="Simple addition function",
+        raw_response='{"function_role": "test"}',
         tokens_used=100,
     )
 
     assert result.chunk_id == "test123"
-    assert result.complexity == "O(n)"
-    assert len(result.dependencies) == 1
+    assert result.function_role == "Test function for demonstration"
+    assert len(result.call_graph.calls) == 1
 
 
 def test_llm_analyzer_initialization() -> None:
@@ -48,13 +59,24 @@ def test_analyze_chunk_success(mock_openai_class: MagicMock) -> None:
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = """
     {
-        "summary": "This is a test function",
-        "purpose": "To demonstrate testing",
-        "algorithm": "Simple addition",
-        "complexity": "O(1)",
-        "dependencies": [],
-        "potential_issues": [],
-        "improvements": ["Add input validation"]
+        "function_role": "Addition function for testing",
+        "behavior": {
+            "normal_case": "Adds two numbers",
+            "special_cases": [],
+            "error_cases": []
+        },
+        "data_flow": {
+            "inputs": "Two integers a and b",
+            "outputs": "Integer result",
+            "side_effects": "None"
+        },
+        "call_graph": {
+            "calls": [],
+            "called_by": ["main"]
+        },
+        "state_management": "No state",
+        "assumptions": "Valid integer inputs",
+        "notes": "Simple function"
     }
     """
     mock_response.usage.total_tokens = 150
@@ -76,8 +98,8 @@ def test_analyze_chunk_success(mock_openai_class: MagicMock) -> None:
     result = analyzer.analyze_chunk(chunk)
 
     assert result.chunk_id == "test_chunk"
-    assert result.summary == "This is a test function"
-    assert result.complexity == "O(1)"
+    assert result.function_role == "Addition function for testing"
+    assert result.data_flow.inputs == "Two integers a and b"
     assert result.tokens_used == 150
     assert analyzer.get_total_tokens() == 150
 
@@ -111,9 +133,9 @@ def test_analyze_chunk_validation_failure(mock_openai_class: MagicMock) -> None:
     result = analyzer.analyze_chunk(chunk)
 
     # Should return partial result with error message
-    assert "Analysis failed" in result.summary
-    assert result.complexity == "Unknown"
-    assert "Analysis validation failed" in result.potential_issues
+    assert "Analysis failed" in result.function_role
+    assert result.data_flow.inputs == "Unknown"
+    assert result.assumptions == "Analysis validation failed"
 
 
 def test_token_counting() -> None:

@@ -89,20 +89,9 @@ class OutputFormatter:
                 )
             )
 
-        # Extract critical issues
+        # Note: In new design, we don't collect "potential_issues"
+        # Instead, error cases are part of behavior description
         critical_issues = []
-        for result in results:
-            if result.potential_issues:
-                for issue in result.potential_issues:
-                    critical_issues.append(
-                        {
-                            "function_name": result.chunk_name,
-                            "file_name": result.chunk_id.split(":")[0]
-                            if ":" in result.chunk_id
-                            else "unknown",
-                            "description": issue,
-                        }
-                    )
 
         # Render template
         template = self.template_env.get_template("project_summary.md.j2")
@@ -135,40 +124,79 @@ class OutputFormatter:
         """
         file_name = Path(file_path).name
 
-        # Create file summary
-        if results:
-            file_summary = f"このファイルには{len(results)}個の関数が含まれています。"
-        else:
-            file_summary = "このファイルには関数が含まれていません。"
+        # Create file header
+        content = f"""# {file_name}
 
-        # Prepare function data
-        functions = []
+**パス**: `{file_path}`
+**言語**: {language}
+**関数数**: {len(results)}
+
+---
+
+## 関数一覧
+
+"""
+
+        # Add each function
         for result in results:
-            functions.append(
-                {
-                    "signature": result.chunk_name,
-                    "start_line": 1,  # Will be populated from metadata if available
-                    "end_line": 100,  # Will be populated from metadata if available
-                    "purpose": result.purpose,
-                    "algorithm": result.algorithm,
-                    "complexity": result.complexity,
-                    "dependencies": result.dependencies,
-                    "potential_issues": result.potential_issues,
-                    "improvements": result.improvements,
-                }
-            )
+            content += f"""### `{result.chunk_name}`
 
-        # Render template
-        template = self.template_env.get_template("file_detail.md.j2")
-        content = template.render(
-            file_name=file_name,
-            file_path=file_path,
-            language=language,
-            line_count=sum(r.tokens_used for r in results),  # Approximation
-            function_count=len(results),
-            file_summary=file_summary,
-            functions=functions,
-        )
+#### 役割
+{result.function_role}
+
+#### 動作
+
+**正常系**: {result.behavior.normal_case}
+
+"""
+
+            if result.behavior.special_cases:
+                content += "**特殊ケース**:\n"
+                for case in result.behavior.special_cases:
+                    content += f"- {case}\n"
+                content += "\n"
+
+            if result.behavior.error_cases:
+                content += "**エラーケース**:\n"
+                for case in result.behavior.error_cases:
+                    content += f"- {case}\n"
+                content += "\n"
+
+            content += f"""#### データフロー
+
+**入力**: {result.data_flow.inputs}
+
+**出力**: {result.data_flow.outputs}
+
+**副作用**: {result.data_flow.side_effects}
+
+"""
+
+            if result.call_graph.calls:
+                content += "#### 呼び出す関数\n"
+                for func in result.call_graph.calls:
+                    content += f"- `{func}`\n"
+                content += "\n"
+
+            if result.call_graph.called_by:
+                content += "#### 想定される呼び出し元\n"
+                for caller in result.call_graph.called_by:
+                    content += f"- `{caller}`\n"
+                content += "\n"
+
+            if result.state_management:
+                content += f"#### 状態管理\n{result.state_management}\n\n"
+
+            if result.assumptions:
+                content += f"#### 前提条件\n{result.assumptions}\n\n"
+
+            if result.notes:
+                content += f"#### 備考\n{result.notes}\n\n"
+
+            content += "---\n\n"
+
+        # Add footer
+        content += "\n*この文書は CodeChart により自動生成されました。*\n"
 
         # Write to file
         output_path = self.output_dir / "files" / f"{file_name}.md"
@@ -195,10 +223,11 @@ class OutputFormatter:
                 [
                     "ファイル",
                     "関数名",
-                    "時間複雑度",
-                    "依存関数数",
-                    "潜在的問題数",
-                    "改善提案数",
+                    "役割",
+                    "呼び出す関数数",
+                    "呼び出し元候補数",
+                    "特殊ケース数",
+                    "エラーケース数",
                     "トークン数",
                 ]
             )
@@ -210,10 +239,11 @@ class OutputFormatter:
                     [
                         file_name,
                         result.chunk_name,
-                        result.complexity,
-                        len(result.dependencies),
-                        len(result.potential_issues),
-                        len(result.improvements),
+                        result.function_role,
+                        len(result.call_graph.calls),
+                        len(result.call_graph.called_by),
+                        len(result.behavior.special_cases),
+                        len(result.behavior.error_cases),
                         result.tokens_used,
                     ]
                 )
@@ -247,14 +277,12 @@ class OutputFormatter:
             writer.writerow(["プロジェクト", "総関数数", stats.total_functions])
             writer.writerow(["プロジェクト", "総行数", stats.total_lines])
 
-            # Quality metrics
-            writer.writerow(["品質", "平均複雑度", stats.avg_complexity])
+            # Quality metrics (Note: complexity metrics moved to separate static analysis)
             writer.writerow(
-                [
-                    "品質",
-                    "潜在的問題数",
-                    sum(len(r.potential_issues) for r in results),
-                ]
+                ["品質", "エラーケース総数", sum(len(r.behavior.error_cases) for r in results)]
+            )
+            writer.writerow(
+                ["品質", "特殊ケース総数", sum(len(r.behavior.special_cases) for r in results)]
             )
 
             # Token usage
@@ -285,10 +313,11 @@ class OutputFormatter:
                     [
                         "ファイル",
                         "関数名",
-                        "時間複雑度",
-                        "依存関数数",
-                        "潜在的問題数",
-                        "改善提案数",
+                        "役割",
+                        "呼び出す関数数",
+                        "呼び出し元候補数",
+                        "特殊ケース数",
+                        "エラーケース数",
                         "トークン数",
                     ]
                 )
@@ -299,10 +328,11 @@ class OutputFormatter:
                 [
                     file_name,
                     result.chunk_name,
-                    result.complexity,
-                    len(result.dependencies),
-                    len(result.potential_issues),
-                    len(result.improvements),
+                    result.function_role,
+                    len(result.call_graph.calls),
+                    len(result.call_graph.called_by),
+                    len(result.behavior.special_cases),
+                    len(result.behavior.error_cases),
                     result.tokens_used,
                 ]
             )
@@ -345,34 +375,57 @@ class OutputFormatter:
         # Append function documentation
         function_doc = f"""### `{result.chunk_name}`
 
-#### 目的
-{result.purpose}
+#### 役割
+{result.function_role}
 
-#### アルゴリズム
-{result.algorithm}
+#### 動作
 
-#### 時間計算量
-{result.complexity}
+**正常系**: {result.behavior.normal_case}
 
 """
 
-        if result.dependencies:
-            function_doc += "#### 依存関数\n"
-            for dep in result.dependencies:
-                function_doc += f"- `{dep}`\n"
+        if result.behavior.special_cases:
+            function_doc += "**特殊ケース**:\n"
+            for case in result.behavior.special_cases:
+                function_doc += f"- {case}\n"
             function_doc += "\n"
 
-        if result.potential_issues:
-            function_doc += "#### ⚠️ 潜在的問題\n"
-            for issue in result.potential_issues:
-                function_doc += f"- {issue}\n"
+        if result.behavior.error_cases:
+            function_doc += "**エラーケース**:\n"
+            for case in result.behavior.error_cases:
+                function_doc += f"- {case}\n"
             function_doc += "\n"
 
-        if result.improvements:
-            function_doc += "#### 💡 改善提案\n"
-            for improvement in result.improvements:
-                function_doc += f"- {improvement}\n"
+        function_doc += f"""#### データフロー
+
+**入力**: {result.data_flow.inputs}
+
+**出力**: {result.data_flow.outputs}
+
+**副作用**: {result.data_flow.side_effects}
+
+"""
+
+        if result.call_graph.calls:
+            function_doc += "#### 呼び出す関数\n"
+            for func in result.call_graph.calls:
+                function_doc += f"- `{func}`\n"
             function_doc += "\n"
+
+        if result.call_graph.called_by:
+            function_doc += "#### 想定される呼び出し元\n"
+            for caller in result.call_graph.called_by:
+                function_doc += f"- `{caller}`\n"
+            function_doc += "\n"
+
+        if result.state_management:
+            function_doc += f"#### 状態管理\n{result.state_management}\n\n"
+
+        if result.assumptions:
+            function_doc += f"#### 前提条件\n{result.assumptions}\n\n"
+
+        if result.notes:
+            function_doc += f"#### 備考\n{result.notes}\n\n"
 
         function_doc += "---\n\n"
 
@@ -418,13 +471,8 @@ class OutputFormatter:
         total_lines = sum(r.tokens_used for r in results)  # Approximation
         total_tokens = sum(r.tokens_used for r in results)
 
-        # Calculate average complexity (simple approximation)
-        complexities = [r.complexity for r in results if r.complexity]
-        if complexities:
-            # Extract O(n) patterns and approximate
-            avg_complexity = "O(n)"  # Simplified for now
-        else:
-            avg_complexity = "N/A"
+        # Note: Complexity metrics moved to separate static analysis (Issue #24)
+        avg_complexity = "N/A"
 
         return ProjectStats(
             total_files=total_files,
