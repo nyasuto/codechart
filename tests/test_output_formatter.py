@@ -3,27 +3,38 @@
 import csv
 from pathlib import Path
 
-from src.llm_analyzer import AnalysisResult
+from src.llm_analyzer import AnalysisResult, Behavior, CallGraph, DataFlow
 from src.output_formatter import FileInfo, OutputFormatter, ProjectStats
 
 
 def create_test_result(
     chunk_id: str = "test.c:add",
     chunk_name: str = "add",
-    summary: str = "Test function",
+    function_role: str = "Test function",
 ) -> AnalysisResult:
     """Create a test analysis result."""
     return AnalysisResult(
         chunk_id=chunk_id,
         chunk_name=chunk_name,
-        summary=summary,
-        purpose="Testing purpose",
-        algorithm="Simple algorithm",
-        complexity="O(1)",
-        dependencies=["helper_func"],
-        potential_issues=["Potential overflow"],
-        improvements=["Add validation"],
-        raw_response='{"summary": "test"}',
+        function_role=function_role,
+        behavior=Behavior(
+            normal_case="Normal operation",
+            special_cases=["Special case 1"],
+            error_cases=["Error case 1"],
+        ),
+        data_flow=DataFlow(
+            inputs="Test inputs",
+            outputs="Test outputs",
+            side_effects="None",
+        ),
+        call_graph=CallGraph(
+            calls=["helper_func"],
+            called_by=[],
+        ),
+        state_management="No state",
+        assumptions="None",
+        notes="Test notes",
+        raw_response='{"function_role": "test"}',
         tokens_used=100,
     )
 
@@ -106,8 +117,8 @@ def test_generate_file_doc(tmp_path: Path) -> None:
     assert "test.c" in content
     assert "add" in content
     assert "subtract" in content
-    assert "目的" in content
-    assert "アルゴリズム" in content
+    assert "役割" in content
+    assert "動作" in content
 
 
 def test_generate_function_csv(tmp_path: Path) -> None:

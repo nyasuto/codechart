@@ -6,20 +6,41 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 
 
+class BehaviorSchema(BaseModel):
+    """Schema for function behavior."""
+
+    normal_case: str = Field(..., min_length=1, description="Normal case behavior")
+    special_cases: list[str] = Field(default_factory=list, description="Special cases")
+    error_cases: list[str] = Field(default_factory=list, description="Error cases")
+
+
+class DataFlowSchema(BaseModel):
+    """Schema for data flow."""
+
+    inputs: str = Field(..., description="Input parameters and their meaning")
+    outputs: str = Field(..., description="Return values and output parameters")
+    side_effects: str = Field(..., description="Side effects")
+
+
+class CallGraphSchema(BaseModel):
+    """Schema for call graph."""
+
+    calls: list[str] = Field(default_factory=list, description="Functions called by this function")
+    called_by: list[str] = Field(
+        default_factory=list, description="Expected callers of this function"
+    )
+
+
 class AnalysisResponse(BaseModel):
     """Schema for LLM analysis response."""
 
-    summary: str = Field(..., min_length=1, description="Brief function description")
-    purpose: str = Field(..., min_length=1, description="Purpose of the function")
-    algorithm: str = Field(..., description="Algorithm used")
-    complexity: str = Field(..., description="Time complexity in O-notation")
-    dependencies: list[str] = Field(default_factory=list, description="List of called functions")
-    potential_issues: list[str] = Field(
-        default_factory=list, description="List of potential issues"
-    )
-    improvements: list[str] = Field(
-        default_factory=list, description="List of improvement suggestions"
-    )
+    function_role: str = Field(..., min_length=1, description="Role of this function in the system")
+    behavior: BehaviorSchema = Field(..., description="Function behavior")
+    data_flow: DataFlowSchema = Field(..., description="Data flow information")
+    call_graph: CallGraphSchema = Field(..., description="Call graph information")
+    state_management: str = Field(..., description="State management approach")
+    assumptions: str = Field(..., description="Implicit assumptions")
+    notes: str = Field(default="", description="Additional important information")
 
 
 class ResponseValidator:

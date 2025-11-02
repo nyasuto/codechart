@@ -12,18 +12,44 @@ from src.retry_strategy import RetryStrategy
 
 
 @dataclass
+class Behavior:
+    """Function behavior description."""
+
+    normal_case: str
+    special_cases: list[str]
+    error_cases: list[str]
+
+
+@dataclass
+class DataFlow:
+    """Data flow information."""
+
+    inputs: str
+    outputs: str
+    side_effects: str
+
+
+@dataclass
+class CallGraph:
+    """Call graph information."""
+
+    calls: list[str]
+    called_by: list[str]
+
+
+@dataclass
 class AnalysisResult:
     """Result of code analysis."""
 
     chunk_id: str
     chunk_name: str
-    summary: str
-    purpose: str
-    algorithm: str
-    complexity: str
-    dependencies: list[str]
-    potential_issues: list[str]
-    improvements: list[str]
+    function_role: str
+    behavior: Behavior
+    data_flow: DataFlow
+    call_graph: CallGraph
+    state_management: str
+    assumptions: str
+    notes: str
     raw_response: str
     tokens_used: int
 
@@ -74,13 +100,24 @@ class LLMAnalyzer:
             return AnalysisResult(
                 chunk_id=chunk.id,
                 chunk_name=chunk.name,
-                summary="Analysis failed: " + str(e),
-                purpose="Unknown",
-                algorithm="Unknown",
-                complexity="Unknown",
-                dependencies=[],
-                potential_issues=["Analysis validation failed"],
-                improvements=[],
+                function_role="Analysis failed: " + str(e),
+                behavior=Behavior(
+                    normal_case="Unknown",
+                    special_cases=[],
+                    error_cases=[],
+                ),
+                data_flow=DataFlow(
+                    inputs="Unknown",
+                    outputs="Unknown",
+                    side_effects="Unknown",
+                ),
+                call_graph=CallGraph(
+                    calls=[],
+                    called_by=[],
+                ),
+                state_management="Unknown",
+                assumptions="Analysis validation failed",
+                notes="",
                 raw_response=response_text,
                 tokens_used=tokens_used,
             )
@@ -91,13 +128,24 @@ class LLMAnalyzer:
         return AnalysisResult(
             chunk_id=chunk.id,
             chunk_name=chunk.name,
-            summary=validated.summary,
-            purpose=validated.purpose,
-            algorithm=validated.algorithm,
-            complexity=validated.complexity,
-            dependencies=validated.dependencies,
-            potential_issues=validated.potential_issues,
-            improvements=validated.improvements,
+            function_role=validated.function_role,
+            behavior=Behavior(
+                normal_case=validated.behavior.normal_case,
+                special_cases=validated.behavior.special_cases,
+                error_cases=validated.behavior.error_cases,
+            ),
+            data_flow=DataFlow(
+                inputs=validated.data_flow.inputs,
+                outputs=validated.data_flow.outputs,
+                side_effects=validated.data_flow.side_effects,
+            ),
+            call_graph=CallGraph(
+                calls=validated.call_graph.calls,
+                called_by=validated.call_graph.called_by,
+            ),
+            state_management=validated.state_management,
+            assumptions=validated.assumptions,
+            notes=validated.notes,
             raw_response=response_text,
             tokens_used=tokens_used,
         )

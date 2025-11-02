@@ -7,16 +7,14 @@ from dataclasses import dataclass
 class PromptTemplates:
     """Collection of prompt templates for code analysis."""
 
-    SYSTEM_PROMPT = """あなたはC/C++コード解析の専門家です。
-提供されたコードを詳細に分析し、以下の観点から評価してください：
-1. 機能と目的
-2. アルゴリズムの複雑度
-3. 潜在的なバグやメモリリーク
-4. 改善提案
+    SYSTEM_PROMPT = """あなたはレガシーC/C++コードの解析専門家です。
+提供されたコードを詳細に分析し、コードの動作と役割を理解するための情報を抽出してください。
+
+重要: 改善提案や複雑度の評価は不要です。あくまでコードの理解に必要な情報のみを提供してください。
 
 必ずJSON形式で出力してください。"""
 
-    FUNCTION_ANALYSIS = """以下のC/C++関数を解析してください。
+    FUNCTION_ANALYSIS = """以下のC/C++関数の動作を詳細に解析してください。
 
 ## コード
 ```c
@@ -27,16 +25,28 @@ class PromptTemplates:
 {context}
 
 ## 出力形式（JSON）
-必ず以下のJSON形式で回答してください。他のテキストは含めないでください。
+以下のJSON形式で、この関数の動作と役割を説明してください。
+他のテキストは含めず、JSONのみを出力してください。
 
 {{
-  "summary": "関数の簡潔な説明（1-2文）",
-  "purpose": "この関数の目的",
-  "algorithm": "使用されているアルゴリズム",
-  "complexity": "時間計算量（O記法）",
-  "dependencies": ["呼び出している関数のリスト"],
-  "potential_issues": ["潜在的な問題点のリスト"],
-  "improvements": ["改善提案のリスト"]
+  "function_role": "システム全体でのこの関数の役割",
+  "behavior": {{
+    "normal_case": "正常系の動作",
+    "special_cases": ["特殊ケースとその処理（配列形式）"],
+    "error_cases": ["エラーケースとその処理（配列形式）"]
+  }},
+  "data_flow": {{
+    "inputs": "入力パラメータとその意味",
+    "outputs": "戻り値・出力パラメータ",
+    "side_effects": "副作用（状態変更、I/O等）"
+  }},
+  "call_graph": {{
+    "calls": ["この関数が呼び出す関数のリスト"],
+    "called_by": ["想定される呼び出し元（推測可能な場合）"]
+  }},
+  "state_management": "状態管理の方法（グローバル変数、静的変数等）",
+  "assumptions": "暗黙の前提条件・仮定",
+  "notes": "理解に重要なその他の情報"
 }}"""
 
     @staticmethod
