@@ -1,16 +1,29 @@
 # CodeChart Configuration File
 # C/C++ Legacy Code Analysis Pipeline
 
-# OpenAI API Settings
+# LLM API Settings
 api:
-  provider: openai
-  model: gpt-4-turbo-preview  # または gpt-4-1106-preview
-  api_key_env: OPENAI_API_KEY  # 環境変数名
-  base_url: null  # カスタムAPIエンドポイント（自社API用）
-  max_tokens: 18000  # チャンク最大トークン数（余裕を持たせる）
-  temperature: 0.2  # 低めで一貫性を確保
-  timeout: 60  # タイムアウト（秒）
-  max_retries: 5  # 最大リトライ回数
+  # Provider: "lm_studio" or "openai"
+  provider: lm_studio
+
+  # LM Studio Settings (OpenAI-compatible local API)
+  lm_studio:
+    base_url: http://127.0.0.1:1234/v1
+    model: local-model  # LM Studioでロードしているモデル名を指定
+    api_key: lm-studio  # ダミーキー（LM Studioは認証不要だが必須パラメータ）
+    temperature: 0.3
+    max_tokens: 2000
+    timeout: 60  # タイムアウト（秒）
+    max_retries: 5
+
+  # OpenAI Settings (for production)
+  openai:
+    api_key_env: OPENAI_API_KEY  # 環境変数名
+    model: gpt-4-turbo-preview
+    temperature: 0.2
+    max_tokens: 2000
+    timeout: 60
+    max_retries: 5
 
 # Parser Settings
 parser:
