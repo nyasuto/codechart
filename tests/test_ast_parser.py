@@ -2,7 +2,12 @@
 
 import pytest
 
-from src.ast_parser import ParseError, PycparserAdapter, create_parser
+from src.ast_parser import (
+    ParseError,
+    PycparserAdapter,
+    TreeSitterAdapter,
+    create_parser,
+)
 
 
 def test_pycparser_simple_function() -> None:
@@ -91,9 +96,13 @@ def test_pycparser_invalid_code() -> None:
 
 
 def test_create_parser_c() -> None:
-    """Test creating parser for C."""
+    """Test creating parser for C (defaults to tree-sitter)."""
     parser = create_parser("c")
-    assert isinstance(parser, PycparserAdapter)
+    assert isinstance(parser, TreeSitterAdapter)
+
+    # Can still create pycparser version
+    parser_pycparser = create_parser("c", use_tree_sitter=False)
+    assert isinstance(parser_pycparser, PycparserAdapter)
 
 
 def test_create_parser_cpp_not_implemented() -> None:
