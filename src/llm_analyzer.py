@@ -102,28 +102,30 @@ class LLMAnalyzer:
             validated = self.validator.validate(response_text)
         except Exception as e:
             print(f"Warning: Validation failed for chunk {chunk.id}: {e}")
-            # Return partial result
+            # エラーメッセージを短縮（最初の100文字のみ）
+            error_summary = str(e)[:100]
+            # Return partial result with clear failure markers
             return AnalysisResult(
                 chunk_id=chunk.id,
                 chunk_name=chunk.name,
-                function_role="Analysis failed: " + str(e),
+                function_role=f"【解析失敗】{error_summary}",
                 behavior=Behavior(
-                    normal_case="Unknown",
-                    special_cases=[],
-                    error_cases=[],
+                    normal_case="【解析失敗】",
+                    special_cases=["解析できませんでした"],
+                    error_cases=["解析できませんでした"],
                 ),
                 data_flow=DataFlow(
-                    inputs="Unknown",
-                    outputs="Unknown",
-                    side_effects="Unknown",
+                    inputs="【解析失敗】",
+                    outputs="【解析失敗】",
+                    side_effects="【解析失敗】",
                 ),
                 call_graph=CallGraph(
-                    calls=[],
-                    called_by=[],
+                    calls=["解析失敗"],
+                    called_by=["解析失敗"],
                 ),
-                state_management="Unknown",
-                assumptions="Analysis validation failed",
-                notes="",
+                state_management="【解析失敗】",
+                assumptions="【解析失敗】解析検証エラー",
+                notes=f"エラー詳細: {str(e)}",
                 raw_response=response_text,
                 tokens_used=tokens_used,
             )

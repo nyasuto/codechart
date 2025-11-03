@@ -10,14 +10,13 @@ api:
   lm_studio:
     base_url: http://127.0.0.1:1234/v1
     # 複数インスタンスをロードしている場合は配列で指定（ラウンドロビンで並列処理）
+    # gpt-oss-20bはメモリ使用量が多いため、シリアル実行推奨
     models:
-      - codellama-13b-instruct
-      - codellama-13b-instruct:2
-      - codellama-13b-instruct:3
+      - openai/gpt-oss-20b
     # 単一モデルの場合（後方互換性）
-    # model: codellama-13b-instruct
+    # model: openai/gpt-oss-20b
     api_key: lm-studio  # ダミーキー（LM Studioは認証不要だが必須パラメータ）
-    temperature: 0  # 最小値：JSON出力の一貫性を最大化
+    temperature: 0.3  # JSON安定性と解析品質のバランス
     max_tokens: 2000
     timeout: 60  # タイムアウト（秒）
     max_retries: 5

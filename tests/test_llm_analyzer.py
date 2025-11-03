@@ -133,9 +133,9 @@ def test_analyze_chunk_validation_failure(mock_openai_class: MagicMock) -> None:
     result = analyzer.analyze_chunk(chunk)
 
     # Should return partial result with error message
-    assert "Analysis failed" in result.function_role
-    assert result.data_flow.inputs == "Unknown"
-    assert result.assumptions == "Analysis validation failed"
+    assert "【解析失敗】" in result.function_role
+    assert result.data_flow.inputs == "【解析失敗】"
+    assert "【解析失敗】" in result.assumptions
 
 
 def test_token_counting() -> None:
