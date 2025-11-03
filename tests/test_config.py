@@ -27,7 +27,7 @@ def test_llm_config_lm_studio() -> None:
         "codellama-13b-instruct:3",
     ]
     assert config.llm.api_key == "lm-studio"
-    assert config.llm.temperature == 0.3
+    assert config.llm.temperature == 0
 
 
 def test_retry_config() -> None:

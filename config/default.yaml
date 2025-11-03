@@ -17,7 +17,7 @@ api:
     # 単一モデルの場合（後方互換性）
     # model: codellama-13b-instruct
     api_key: lm-studio  # ダミーキー（LM Studioは認証不要だが必須パラメータ）
-    temperature: 0.3
+    temperature: 0  # 最小値：JSON出力の一貫性を最大化
     max_tokens: 2000
     timeout: 60  # タイムアウト（秒）
     max_retries: 5
