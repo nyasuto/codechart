@@ -79,9 +79,26 @@ class ResponseValidator:
         Raises:
             json.JSONDecodeError: If no valid JSON found
         """
-        # Try to parse directly
+        # Try to parse directly (fast path)
         try:
             return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Try to extract first complete JSON object using raw_decode
+        # This handles cases where LLM adds extra text after JSON
+        decoder = json.JSONDecoder()
+        text = text.strip()
+
+        # Find first {
+        start_idx = text.find("{")
+        if start_idx == -1:
+            raise json.JSONDecodeError("No JSON object found in response", text, 0)
+
+        try:
+            # raw_decode returns (obj, end_index)
+            obj, end_idx = decoder.raw_decode(text, start_idx)
+            return obj
         except json.JSONDecodeError:
             pass
 
@@ -91,14 +108,21 @@ class ResponseValidator:
             end = text.find("```", start)
             if end != -1:
                 json_str = text[start:end].strip()
-                return json.loads(json_str)
+                try:
+                    obj, _ = decoder.raw_decode(json_str)
+                    return obj
+                except json.JSONDecodeError:
+                    pass
 
-        # Try to find JSON block without fence
+        # Last resort: extract from first { to last }
         if "{" in text and "}" in text:
             start = text.find("{")
             end = text.rfind("}") + 1
-            json_str = text[start:end]
-            return json.loads(json_str)
+            json_str = text[start:end].strip()
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
 
         raise json.JSONDecodeError("No valid JSON found in response", text, 0)
 
