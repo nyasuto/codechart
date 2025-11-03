@@ -60,44 +60,17 @@ class PromptTemplates:
   "notes": "理解に重要なその他の情報"
 }}
 
-### 良い例
-{{
-  "function_role": "2つの整数を加算して結果を返す",
-  "behavior": {{
-    "normal_case": "引数aとbを加算し、その結果を返す",
-    "special_cases": [
-      "a または b が INT_MAX に近い場合、オーバーフローの可能性がある",
-      "負の数の加算も正しく処理される"
-    ],
-    "error_cases": []
-  }},
-  "data_flow": {{
-    "inputs": "a, b: 加算する2つの整数（int型）",
-    "outputs": "戻り値: a + b の計算結果（int型）",
-    "side_effects": "なし"
-  }},
-  "call_graph": {{
-    "calls": [],
-    "called_by": []
-  }},
-  "state_management": "なし",
-  "assumptions": "int型のオーバーフローチェックは呼び出し側で行う",
-  "notes": "単純な算術演算関数"
-}}
+### ⚠️ 重要な注意事項
+**必ず提供されたコード自体を分析してください**
+- 上記のJSON構造はテンプレートです
+- テンプレートの説明文（「システム全体でのこの関数の役割」等）をそのままコピーしないでください
+- 実際のコードを読んで、その関数が何をしているかを具体的に分析してください
 
-### 避けるべき例（悪い例）
-{{
-  "data_flow": {{
-    "inputs": [{{"name": "a", "type": "int"}}],  // ❌ 辞書の配列ではなく文字列で
-    "outputs": {{"name": "result"}},             // ❌ 辞書ではなく文字列で
-    "side_effects": []                           // ❌ 空配列ではなく「なし」という文字列
-  }},
-  "behavior": {{
-    "special_cases": [
-      ["a = 0", "結果は b"]  // ❌ 配列の中に配列を入れない。1つの文字列にまとめる
-    ]
-  }}
-}}"""
+### データ型の注意
+- `function_role`, `state_management`, `assumptions`, `notes` → **文字列型**
+- `normal_case`, `inputs`, `outputs`, `side_effects` → **文字列型**
+- `special_cases`, `error_cases`, `calls`, `called_by` → **文字列の配列**
+- 空の場合は空配列 `[]` または "なし" を使用"""
 
     @staticmethod
     def format_function_analysis(code: str, context: str = "") -> str:
