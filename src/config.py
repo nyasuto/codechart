@@ -14,7 +14,7 @@ class LLMConfig:
 
     provider: str  # "lm_studio" or "openai"
     base_url: str
-    model: str
+    models: list[str]  # 複数モデルをサポート（ラウンドロビンで使用）
     api_key: str
     temperature: float
     max_tokens: int
@@ -89,10 +89,22 @@ class Config:
 
         if provider == "lm_studio":
             lm_config = data["api"]["lm_studio"]
+
+            # 複数モデル対応: models (配列) または model (文字列) を受け付ける
+            models = lm_config.get("models")
+            if models is None:
+                # 後方互換性: 単一モデルの場合
+                model = lm_config.get("model")
+                if model is None:
+                    raise ValueError(
+                        "Either 'models' or 'model' must be specified in lm_studio config"
+                    )
+                models = [model]
+
             llm = LLMConfig(
                 provider="lm_studio",
                 base_url=lm_config["base_url"],
-                model=lm_config["model"],
+                models=models,
                 api_key=lm_config["api_key"],
                 temperature=lm_config["temperature"],
                 max_tokens=lm_config["max_tokens"],
@@ -107,10 +119,21 @@ class Config:
             if not api_key:
                 raise ValueError(f"Environment variable {api_key_env} not set for OpenAI API")
 
+            # 複数モデル対応: models (配列) または model (文字列) を受け付ける
+            models = openai_config.get("models")
+            if models is None:
+                # 後方互換性: 単一モデルの場合
+                model = openai_config.get("model")
+                if model is None:
+                    raise ValueError(
+                        "Either 'models' or 'model' must be specified in openai config"
+                    )
+                models = [model]
+
             llm = LLMConfig(
                 provider="openai",
                 base_url="https://api.openai.com/v1",
-                model=openai_config["model"],
+                models=models,
                 api_key=api_key,
                 temperature=openai_config["temperature"],
                 max_tokens=openai_config["max_tokens"],

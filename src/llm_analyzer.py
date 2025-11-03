@@ -1,5 +1,6 @@
 """LLM-based code analyzer."""
 
+import threading
 from dataclasses import dataclass
 
 from openai import OpenAI
@@ -68,6 +69,11 @@ class LLMAnalyzer:
         self.retry_strategy = RetryStrategy(config.retry)
         self.validator = ResponseValidator()
         self.total_tokens_used = 0
+
+        # 複数モデルのラウンドロビン用カウンター
+        self.models = config.llm.models
+        self.model_index = 0
+        self.model_lock = threading.Lock()  # スレッドセーフなモデル選択用
 
     def analyze_chunk(self, chunk: CodeChunk, context: str = "") -> AnalysisResult:
         """Analyze a code chunk.
@@ -150,6 +156,18 @@ class LLMAnalyzer:
             tokens_used=tokens_used,
         )
 
+    def _get_next_model(self) -> str:
+        """Get next model in round-robin fashion (thread-safe).
+
+        Returns:
+            Model name for the next request
+        """
+        with self.model_lock:
+            model = self.models[self.model_index % len(self.models)]
+            self.model_index += 1
+            print(f"[LLM] Using model instance: {model} (request #{self.model_index})")
+        return model
+
     def _call_llm(self, user_prompt: str) -> tuple[str, int]:
         """Call LLM API.
 
@@ -163,7 +181,7 @@ class LLMAnalyzer:
             OpenAI API exceptions on error
         """
         response = self.client.chat.completions.create(
-            model=self.config.llm.model,
+            model=self._get_next_model(),
             messages=[
                 {"role": "system", "content": PromptTemplates.get_system_prompt()},
                 {"role": "user", "content": user_prompt},

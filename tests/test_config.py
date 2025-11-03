@@ -21,7 +21,11 @@ def test_llm_config_lm_studio() -> None:
     config = Config.from_yaml()
 
     assert config.llm.provider == "lm_studio"
-    assert config.llm.model == "openai/gpt-oss-20b"
+    assert config.llm.models == [
+        "codellama-13b-instruct",
+        "codellama-13b-instruct:2",
+        "codellama-13b-instruct:3",
+    ]
     assert config.llm.api_key == "lm-studio"
     assert config.llm.temperature == 0.3
 
