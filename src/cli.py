@@ -149,7 +149,7 @@ def info() -> None:
 
         click.echo("CodeChart Configuration:")
         click.echo(f"  LLM Provider: {config.llm.provider}")
-        click.echo(f"  Model: {config.llm.model}")
+        click.echo(f"  Models: {', '.join(config.llm.models)}")
         click.echo(f"  Base URL: {config.llm.base_url}")
         click.echo(f"  Max Chunk Tokens: {config.analysis_max_chunk_tokens:,}")
         click.echo(f"  Batch Size: {config.analysis_batch_size}")

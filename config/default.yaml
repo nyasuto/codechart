@@ -9,7 +9,13 @@ api:
   # LM Studio Settings (OpenAI-compatible local API)
   lm_studio:
     base_url: http://127.0.0.1:1234/v1
-    model: bigcode/starcoder2-15b  # LM Studioでロードしているモデル名を指定
+    # 複数インスタンスをロードしている場合は配列で指定（ラウンドロビンで並列処理）
+    models:
+      - codellama-13b-instruct
+      - codellama-13b-instruct:2
+      - codellama-13b-instruct:3
+    # 単一モデルの場合（後方互換性）
+    # model: codellama-13b-instruct
     api_key: lm-studio  # ダミーキー（LM Studioは認証不要だが必須パラメータ）
     temperature: 0.3
     max_tokens: 2000

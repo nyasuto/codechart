@@ -60,7 +60,7 @@ def test_info_command() -> None:
     assert result.exit_code == 0
     assert "Configuration" in result.output
     assert "LLM Provider" in result.output
-    assert "Model" in result.output
+    assert "Models" in result.output
 
 
 def test_main_version() -> None:
