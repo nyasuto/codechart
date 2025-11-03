@@ -11,24 +11,24 @@ GPT-4 APIによる意味解析と、社内RAGシステムへの最適化され�
 
 ## 主要機能
 - **コード自動分割（チャンキング）**: 関数単位でトークン制限内に分割
-- **GPT-4による意味解析**: 目的、アルゴリズム、潜在的問題を抽出
+- **LLMによる理解・解析**: 関数の役割、動作、データフロー、コールグラフを抽出
 - **技術文書生成**: Markdown（詳細説明）+ CSV（メトリクス）
+- **並列処理**: 複数LLMインスタンスによる高速解析
 - **増分解析**: キャッシュ機構によるコスト削減
-- **静的解析統合**: Cppcheck、ctags（Phase 2）
 
 ## 開発フェーズ
-1. **Phase 1** (現在): 1万行規模のOSSで基本機能検証（cJSON）
-2. **Phase 2**: 3万行規模への拡張 + 静的解析統合
+1. **Phase 1** (完了): 1万行規模のOSSで基本機能検証（cJSON）
+2. **Phase 2** (現在): 理解特化型への改訂、並列処理、増分解析
 3. **Phase 3**: 技術文書生成機能の強化
-4. **Phase 4**: 5万行規模（Redis相当）での本番運用
+4. **Phase 4**: 大規模コードベース（3-5万行）での本番運用
 
 ## 技術スタック
 - **言語**: Python 3.12+
 - **パッケージ管理**: uv
-- **AST解析**: pycparser（Phase 1）→ libclang（Phase 2+）
-- **LLM**: GPT-4 Turbo API（18,000トークン/チャンク）
-- **文書生成**: Jinja2（Markdown）、CSV
-- **品質管理**: pytest、ruff、Makefile
+- **AST解析**: pycparser → tree-sitter（将来）
+- **LLM**: OpenAI-compatible API (GPT-4, CodeLlama, etc.)
+- **文書生成**: Markdown、CSV
+- **品質管理**: pytest、ruff、GitHub Actions
 
 ---
 
@@ -112,6 +112,54 @@ output/cjson/
     ├── functions.csv           # 関数一覧
     └── metrics.csv             # メトリクスサマリー
 ```
+
+---
+
+## 推奨する静的解析ツール
+
+CodeChartは**LLMによる理解・解析**に特化しています。
+品質評価やメトリクス計算には、以下の優れた静的解析ツールとの併用を推奨します。
+
+### コード品質・静的解析
+
+| ツール | 用途 | 特徴 |
+|--------|------|------|
+| [**Cppcheck**](http://cppcheck.sourceforge.net/) | 静的解析 | メモリリーク、未定義動作、バッファオーバーフロー検出 |
+| [**Clang-Tidy**](https://clang.llvm.org/extra/clang-tidy/) | Linter | モダンC++への移行支援、コーディング規約チェック |
+| [**SonarQube**](https://www.sonarqube.org/) | 総合品質管理 | 技術的負債、セキュリティ脆弱性の可視化 |
+
+### メトリクス計算
+
+| ツール | 用途 | 特徴 |
+|--------|------|------|
+| [**Lizard**](https://github.com/terryyin/lizard) | 複雑度計算 | Cyclomatic Complexity、関数行数、ネスト深度 |
+| [**CCCC**](http://cccc.sourceforge.net/) | OO メトリクス | C++向けのオブジェクト指向メトリクス |
+
+### コールグラフ・依存関係
+
+| ツール | 用途 | 特徴 |
+|--------|------|------|
+| [**cscope**](http://cscope.sourceforge.net/) | コードナビゲーション | 関数呼び出し、変数参照の検索 |
+| [**Doxygen**](https://www.doxygen.nl/) | ドキュメント生成 | コールグラフ、クラス図の自動生成 |
+| [**Egypt**](https://www.gson.org/egypt/) | コールグラフ | ctagsベースのコールグラフ可視化 |
+
+### 使用例
+
+```bash
+# CodeChartで理解・技術文書生成
+uv run codechart analyze src/ -o output/docs
+
+# Lizardで複雑度メトリクス計算
+lizard src/ -o output/metrics.html
+
+# Cppcheckで静的解析
+cppcheck --enable=all --xml src/ 2> output/cppcheck.xml
+
+# Doxygenでコールグラフ生成
+doxygen Doxyfile
+```
+
+この組み合わせにより、**理解**（CodeChart）と**品質評価**（静的解析ツール）の両面から、レガシーコードを効果的に分析できます。
 
 ---
 
