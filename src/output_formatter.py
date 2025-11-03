@@ -48,6 +48,7 @@ class OutputFormatter:
         # Create subdirectories
         (self.output_dir / "files").mkdir(exist_ok=True)
         (self.output_dir / "metrics").mkdir(exist_ok=True)
+        (self.output_dir / "graphs").mkdir(exist_ok=True)
 
         # Setup Jinja2 environment
         if template_dir is None:
@@ -481,3 +482,130 @@ class OutputFormatter:
             avg_complexity=avg_complexity,
             total_tokens=total_tokens,
         )
+
+    def generate_mermaid_file_callgraph(
+        self, file_path: str, results: Sequence[AnalysisResult]
+    ) -> Path:
+        """Generate Mermaid callgraph for a single file.
+
+        Args:
+            file_path: Path to the source file
+            results: Analysis results for this file
+
+        Returns:
+            Path to generated Mermaid markdown file
+        """
+        file_name = Path(file_path).name
+        safe_name = file_name.replace(".", "_")
+
+        # Build call graph
+        content = f"""# {file_name} - Call Graph
+
+このファイル内の関数呼び出し関係を可視化したグラフです。
+
+```mermaid
+graph TD
+"""
+
+        # Add nodes and edges
+        for result in results:
+            # Skip failed analyses
+            if "【解析失敗】" in result.function_role:
+                continue
+
+            func_name = result.chunk_name
+            # Sanitize function name for Mermaid (remove special characters)
+            safe_func_name = func_name.replace("(", "").replace(")", "").replace(" ", "_")
+
+            # Add calls (this function calls other functions)
+            for called_func in result.call_graph.calls:
+                if called_func and called_func != "解析失敗":
+                    safe_called = called_func.replace("(", "").replace(")", "").replace(" ", "_")
+                    content += (
+                        f"    {safe_func_name}[{func_name}] --> {safe_called}[{called_func}]\n"
+                    )
+
+        content += """```
+
+**凡例:**
+- 矢印は関数呼び出しの方向を示します
+- `A --> B` は「関数Aが関数Bを呼び出す」ことを意味します
+
+*この文書は CodeChart により自動生成されました。*
+"""
+
+        # Write to file
+        output_path = self.output_dir / "graphs" / f"callgraph_{safe_name}.md"
+        output_path.write_text(content, encoding="utf-8")
+
+        return output_path
+
+    def generate_mermaid_project_dependencies(
+        self, file_results: dict[str, list[AnalysisResult]]
+    ) -> Path:
+        """Generate Mermaid dependency graph for the entire project.
+
+        Args:
+            file_results: Results grouped by file
+
+        Returns:
+            Path to generated Mermaid markdown file
+        """
+        content = """# Project Dependencies
+
+プロジェクト全体のファイル間依存関係を可視化したグラフです。
+
+```mermaid
+graph LR
+"""
+
+        # Build file-level dependency graph
+        # Key: file, Value: set of files it depends on
+        file_dependencies: dict[str, set[str]] = {}
+
+        for file_path, results in file_results.items():
+            file_name = Path(file_path).name
+            if file_name not in file_dependencies:
+                file_dependencies[file_name] = set()
+
+            for result in results:
+                # Skip failed analyses
+                if "【解析失敗】" in result.function_role:
+                    continue
+
+                # Check if called functions belong to other files
+                for called_func in result.call_graph.calls:
+                    if called_func and called_func != "解析失敗":
+                        # Try to find which file contains this function
+                        for other_file, other_results in file_results.items():
+                            other_file_name = Path(other_file).name
+                            if other_file_name != file_name:
+                                for other_result in other_results:
+                                    if other_result.chunk_name == called_func:
+                                        file_dependencies[file_name].add(other_file_name)
+
+        # Generate Mermaid graph
+        for file_name, dependencies in file_dependencies.items():
+            safe_file = file_name.replace(".", "_")
+            for dep_file in dependencies:
+                safe_dep = dep_file.replace(".", "_")
+                content += f"    {safe_file}[{file_name}] --> {safe_dep}[{dep_file}]\n"
+
+        content += """```
+
+**凡例:**
+- 矢印はファイル間の依存関係を示します
+- `A --> B` は「ファイルA内の関数がファイルB内の関数を呼び出す」ことを意味します
+
+**注意:**
+- このグラフはLLM解析結果に基づいています
+- 実際のインクルード関係とは異なる場合があります
+
+*この文書は CodeChart により自動生成されました。*
+"""
+
+        # Write to file
+        output_path = self.output_dir / "graphs" / "dependencies.md"
+        output_path.write_text(content, encoding="utf-8")
+
+        return output_path

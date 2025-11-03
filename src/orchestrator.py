@@ -140,6 +140,22 @@ class Orchestrator:
             metrics_csv = formatter.generate_metrics_csv(all_results, dict(file_results))
             print(f"Generated: {metrics_csv}")
 
+            # Generate Mermaid call graphs
+            print("\nGenerating Mermaid call graphs...")
+            for file_path, results in file_results.items():
+                try:
+                    callgraph_path = formatter.generate_mermaid_file_callgraph(file_path, results)
+                    print(f"Generated call graph: {callgraph_path}")
+                except Exception as e:
+                    print(f"Warning: Failed to generate call graph for {file_path}: {e}")
+
+            # Generate project-level dependency graph
+            try:
+                dep_graph_path = formatter.generate_mermaid_project_dependencies(dict(file_results))
+                print(f"Generated dependency graph: {dep_graph_path}")
+            except Exception as e:
+                print(f"Warning: Failed to generate dependency graph: {e}")
+
             # Note: File documentation and functions.csv already generated incrementally
             print(
                 f"✓ Incremental output completed: {len(file_results)} files, {len(all_results)} functions"
