@@ -9,7 +9,7 @@ api:
   # LM Studio Settings (OpenAI-compatible local API)
   lm_studio:
     base_url: http://127.0.0.1:1234/v1
-    model: openai/gpt-oss-20b  # LM Studioでロードしているモデル名を指定
+    model: bigcode/starcoder2-15b  # LM Studioでロードしているモデル名を指定
     api_key: lm-studio  # ダミーキー（LM Studioは認証不要だが必須パラメータ）
     temperature: 0.3
     max_tokens: 2000
